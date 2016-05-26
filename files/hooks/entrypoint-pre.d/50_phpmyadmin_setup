@@ -1,0 +1,16 @@
+#!/bin/bash
+
+if [ "$DISABLE_PHPMYADMIN" == "1" ]; then
+  echo "Disabling phpmyadmin services"
+  mv /etc/supervisor/conf.d/php-fpm.conf /tmp/
+  mv /etc/supervisor/conf.d/nginx.conf /tmp/
+else
+  [ -f /etc/supervisor/conf.d/php-fpm.conf ] || mv /tmp/php-fpm.conf /etc/supervisor/conf.d/
+  [ -f /etc/supervisor/conf.d/nginx.conf ] || mv /tmp/nginx.conf /etc/supervisor/conf.d/
+  cp /var/www/html/sql/create_tables.sql /docker-entrypoint-initdb.d/
+  cat <<-EOF > /docker-entrypoint-initdb.d/phpmyadmin.sql
+    CREATE DATABASE IF NOT EXISTS phpmyadmin;
+    GRANT ALL PRIVILEGES ON phpmyadmin.* TO ${PMA_CONTROL_USER}@localhost IDENTIFIED BY '${PMA_CONTROL_PASSWORD}';
+    FLUSH PRIVILEGES;
+EOF
+fi
