@@ -1,10 +1,11 @@
 version: '2'
 services:
-  docker-ubuntu-16-nginx-1.10.0-php-7.0-phpmyadmin-4.6-mariadb-10.0:
+  ubuntu-16-nginx-1.10.0-php-7.0-phpmyadmin-4.6-mariadb-10.0:
     build: .
-    image: docker-ubuntu-16-nginx-1.10.0-php-7.0-phpmyadmin-4.6-mariadb-10.0
+    image: ubuntu-16-nginx-1.10.0-php-7.0-phpmyadmin-4.6-mariadb-10.0
     ports:
-      - "8306:3306"
+      - "3306:3306"
       - "8080:8080"
+    user: "100000"
     environment:
       - SUPERVISORD_LOGLEVEL=debug
