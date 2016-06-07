@@ -1,0 +1,142 @@
+apiVersion: v1
+kind: Template
+metadata:
+  annotations:
+    description: Ephemeral MariaDB with PHPmyAdmin
+  name: 1and1-mariadb-phpmyadmin
+objects:
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      description: Definition for Deploying Mariadb database.
+    labels:
+      service: mariadb
+    name: ${DATABASE_SERVICE_NAME}
+  spec:
+    replicas: 1
+    selector:
+      name: ${DATABASE_SERVICE_NAME}
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          name: ${DATABASE_SERVICE_NAME}
+          service: mariadb
+        name: ${DATABASE_SERVICE_NAME}
+      spec:
+        containers:
+        - env:
+          - name: MYSQL_DATABASE
+            value: ${MARIADB_DATABASE}
+          - name: MYSQL_PASSWORD
+            value: ${MARIDB_PASSWORD}
+          - name: MYSQL_ROOT_PASSWORD
+            value: ${DATABASE_ADMIN_PASSWORD}
+          - name: MYSQL_USER
+            value: ${MARIADB_USER}
+          image: 1and1internet/ubuntu-16-nginx-1.10.0-php-7.0-phpmyadmin-4.6-mariadb-10.0:latest
+          imagePullPolicy: Always
+          name: ${DATABASE_SERVICE_NAME}
+          ports:
+          - containerPort: 3306
+            protocol: TCP
+          - containerPort: 8080
+            protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -i
+              - -c
+              - MYSQL_PWD="$MYSQL_PASSWORD" mysql -h 127.0.0.1 -u $MYSQL_USER -D $MYSQL_DATABASE
+                -e 'SELECT 1'
+            initialDelaySeconds: 5
+            timeoutSeconds: 1
+          securityContext:
+            capabilities: {}
+            privileged: false
+          terminationMessagePath: /dev/termination-log
+          volumeMounts:
+          - mountPath: /var/lib/mysql/
+            name: ${DATABASE_SERVICE_NAME}-data
+        restartPolicy: Always
+        securityContext:
+          runAsUser: ${OPENSHIFT_USER}
+        volumes:
+        - emptyDir:
+            medium: ""
+          name: ${DATABASE_SERVICE_NAME}-data
+    triggers:
+    - type: ConfigChange
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: ${DATABASE_SERVICE_NAME}
+  spec:
+    host: ${DATABASE_ADMIN_DOMAIN}
+    port:
+      targetPort: 8080
+      protocol: TCP
+    to:
+      kind: Service
+      name: ${DATABASE_SERVICE_NAME}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      service: mariadb
+    name: ${DATABASE_SERVICE_NAME}
+  spec:
+    ports:
+    - name: ${DATABASE_SERVICE_NAME}
+      port: 3306
+      protocol: TCP
+      targetPort: 3306
+    - name: ${DATABASE_SERVICE_NAME}-phpmyadmin
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      name: ${DATABASE_SERVICE_NAME}
+    sessionAffinity: None
+    type: ClusterIP
+parameters:
+- description: Password for the database admin user which you can use to administer
+    the database
+  displayName: Database administrator password
+  from: '[a-zA-Z0-9]{16}'
+  generate: expression
+  name: DATABASE_ADMIN_PASSWORD
+  required: true
+- description: Database service name
+  displayName: Database service name
+  from: mariadb[0-9]{3}
+  generate: expression
+  name: DATABASE_SERVICE_NAME
+  required: true
+- description: Database Name
+  displayname: Database Name
+  name: MARIADB_DATABASE
+  from: mariadb[0-9]{3}
+  generate: expression
+  required: true
+- description: Database User
+  displayname: Database User
+  name: MARIADB_USER
+  from: dbuser[0-9]{3}
+  generate: expression
+  required: true
+- description: Database Password
+  displayname: Database Password
+  from: '[a-zA-Z0-9]{24}'
+  generate: expression
+  name: MARIDB_PASSWORD
+- description: Openshift User
+  displayname: Openshift User
+  name: OPENSHIFT_USER
+- description: Database Admin URL
+  displayname: Database Admin URL
+  name: DATABASE_ADMIN_DOMAIN
+  required: true
