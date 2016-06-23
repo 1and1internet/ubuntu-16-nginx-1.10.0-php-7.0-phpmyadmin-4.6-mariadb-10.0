@@ -4,7 +4,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 COPY files/ /
 
-ENV MYSQL_ROOT_PASSWORD=ReplaceWithENVFromBuild \
+ENV MARIADB_ROOT_PASSWORD=ReplaceWithENVFromBuild \
     DISABLE_PHPMYADMIN=0 \
     PMA_ARBITRARY=0 \
     PMA_HOST=localhost

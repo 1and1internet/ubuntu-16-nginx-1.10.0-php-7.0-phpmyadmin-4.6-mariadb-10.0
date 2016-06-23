@@ -11,7 +11,7 @@ end
 
 PACKAGE_NAME='mariadb-server'
 LISTEN_PORT=8080
-MYSQL_PORT=3306
+MARIADB_PORT=3306
 CONTAINER_START_DELAY=30
 
 RSpec.configure do |c|
@@ -23,7 +23,7 @@ RSpec.configure do |c|
     'HostConfig'   => {
       'PortBindings' => {
         "#{LISTEN_PORT}/tcp" => [ { 'HostPort' => "#{LISTEN_PORT}" } ],
-        "#{MYSQL_PORT}/tcp" => [ { 'HostPort' => "#{MYSQL_PORT}" } ]
+        "#{MARIADB_PORT}/tcp" => [ { 'HostPort' => "#{MARIADB_PORT}" } ]
       }
     }
   }
