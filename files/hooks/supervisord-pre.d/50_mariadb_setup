@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-mysql_cmd="mysql -u root -p${MARIADB_ROOT_PASSWORD}"
+mysql_cmd="mysql -u root -p${MYSQL_ROOT_PASSWORD}"
 
 if [ -e "/var/lib/mysql/ib_logfile0" ]; then
    echo "Mariadb already setup before, skipping."
@@ -9,9 +9,9 @@ if [ -e "/var/lib/mysql/ib_logfile0" ]; then
 fi
 
 
-if [ -z "$MARIADB_ROOT_PASSWORD" -a -z "$MARIADB_ALLOW_EMPTY_PASSWORD" ]; then
-    echo >&2 'error: database is uninitialized and MARIADB_ROOT_PASSWORD not set'
-    echo >&2 '  Did you forget to add -e MARIADB_ROOT_PASSWORD=... ?'
+if [ -z "$MYSQL_ROOT_PASSWORD" -a -z "$MYSQL_ALLOW_EMPTY_PASSWORD" ]; then
+    echo >&2 'error: database is uninitialized and MYSQL_ROOT_PASSWORD not set'
+    echo >&2 '  Did you forget to add -e MYSQL_ROOT_PASSWORD=... ?'
     exit 1
 fi
 
@@ -26,20 +26,20 @@ echo 'Finished mysql_install_db'
 tempSqlFile='/tmp/mysql-first-time.sql'
 cat > "$tempSqlFile" <<-EOSQL
         DELETE FROM mysql.user ;
-        CREATE USER 'root'@'%' IDENTIFIED BY '${MARIADB_ROOT_PASSWORD}' ;
+        CREATE USER 'root'@'%' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}' ;
         GRANT ALL ON *.* TO 'root'@'%' WITH GRANT OPTION ;
         DROP DATABASE IF EXISTS test ;
 EOSQL
 
-if [ "$MARIADB_DATABASE" ]; then
-    echo "CREATE DATABASE IF NOT EXISTS \`$MARIADB_DATABASE\` ;" >> "$tempSqlFile"
+if [ "$MYSQL_DATABASE" ]; then
+    echo "CREATE DATABASE IF NOT EXISTS \`$MYSQL_DATABASE\` ;" >> "$tempSqlFile"
 fi
 
-if [ "$MARIADB_USER" -a "$MARIADB_PASSWORD" ]; then
-    echo "CREATE USER '$MARIADB_USER'@'%' IDENTIFIED BY '$MARIADB_PASSWORD' ;" >> "$tempSqlFile"
+if [ "$MYSQL_USER" -a "$MYSQL_PASSWORD" ]; then
+    echo "CREATE USER '$MYSQL_USER'@'%' IDENTIFIED BY '$MYSQL_PASSWORD' ;" >> "$tempSqlFile"
 
-    if [ "$MARIADB_DATABASE" ]; then
-        echo "GRANT ALL ON \`$MARIADB_DATABASE\`.* TO '$MARIADB_USER'@'%' ;" >> "$tempSqlFile"
+    if [ "$MYSQL_DATABASE" ]; then
+        echo "GRANT ALL ON \`$MYSQL_DATABASE\`.* TO '$MYSQL_USER'@'%' ;" >> "$tempSqlFile"
     fi
 fi
 
