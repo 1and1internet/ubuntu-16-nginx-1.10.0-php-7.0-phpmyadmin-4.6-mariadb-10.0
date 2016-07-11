@@ -1,5 +1,7 @@
+require 'rspec'
 require 'serverspec'
 require 'docker'
+require_relative '../../drone-tests/shared/jemonkeypatch.rb'
 
 #Include Tests
 base_spec_dir = Pathname.new(File.join(File.dirname(__FILE__)))
@@ -14,24 +16,18 @@ LISTEN_PORT=8080
 MARIADB_PORT=3306
 CONTAINER_START_DELAY=30
 
+set :backend, :docker
+@image = Docker::Image.get(ENV['IMAGE'])
+set :docker_image, @image.id
+#set :docker_debug, true
+set :docker_container_start_timeout, 60
+set :docker_container_ready_regex, /mysqld_safe Starting mysqld daemon with databases from \/var\/lib\/mysql/
+set :docker_container_create_options, {
+  'Image'      => @image.id,
+  'User'       => '100000',
+}
+
 RSpec.configure do |c|
-  @image = Docker::Image.get(ENV['IMAGE'])
-  set :backend, :docker
-  set :docker_image, @image.id
-  set :docker_container_create_options, {
-    'User'     => '100000',
-    'HostConfig'   => {
-      'PortBindings' => {
-        "#{LISTEN_PORT}/tcp" => [ { 'HostPort' => "#{LISTEN_PORT}" } ],
-        "#{MARIADB_PORT}/tcp" => [ { 'HostPort' => "#{MARIADB_PORT}" } ]
-      }
-    }
-  }
-
-  describe command("sleep #{CONTAINER_START_DELAY}") do
-    its(:stdout) { should eq "" }
-  end
-
   describe "tests" do
     include_examples 'docker-ubuntu-16'
     include_examples 'docker-ubuntu-16-nginx-1.10.0'
