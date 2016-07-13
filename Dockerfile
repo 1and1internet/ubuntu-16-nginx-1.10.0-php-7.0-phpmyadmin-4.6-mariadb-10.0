@@ -17,16 +17,14 @@ RUN \
   rm -rf /var/lib/apt/lists/* && \
   rm -rf /var/lib/mysql && \
   mkdir --mode=0777 /var/lib/mysql /var/run/mysqld && \
-  chmod 777 /etc/mysql/debian.cnf
-
-RUN \
-    sed -r -i -e 's/^bind-address\s+=\s+127\.0\.0\.1$/bind-address = 0.0.0.0/' /etc/mysql/mariadb.conf.d/50-server.cnf && \
-    sed -r -i -e 's/^user\s+=\s+mysql$/#user = mysql/' /etc/mysql/mariadb.conf.d/50-server.cnf && \
-    printf '[mysqld]\nskip-name-resolve\n' > /etc/mysql/conf.d/skip-name-resolve.cnf && \
-    chmod 777 /var/lib/mysql && \
-    chmod 777 -R /var/log/mysql && \
-    chmod 755 /hooks/entrypoint-pre.d/50_phpmyadmin_setup /hooks/supervisord-pre.d/50_mariadb_setup && \
-    chmod 777 /docker-entrypoint-initdb.d && \
-    chmod 755 /hooks
+  chmod 777 /etc/mysql/debian.cnf && \
+  sed -r -i -e 's/^bind-address\s+=\s+127\.0\.0\.1$/bind-address = 0.0.0.0/' /etc/mysql/mariadb.conf.d/50-server.cnf && \
+  sed -r -i -e 's/^user\s+=\s+mysql$/#user = mysql/' /etc/mysql/mariadb.conf.d/50-server.cnf && \
+  printf '[mysqld]\nskip-name-resolve\n' > /etc/mysql/conf.d/skip-name-resolve.cnf && \
+  chmod 777 /var/lib/mysql && \
+  chmod 777 -R /var/log/mysql && \
+  chmod 755 /hooks/entrypoint-pre.d/50_phpmyadmin_setup /hooks/supervisord-pre.d/50_mariadb_setup && \
+  chmod 777 /docker-entrypoint-initdb.d && \
+  chmod 755 /hooks
 
 EXPOSE 3306 8080
