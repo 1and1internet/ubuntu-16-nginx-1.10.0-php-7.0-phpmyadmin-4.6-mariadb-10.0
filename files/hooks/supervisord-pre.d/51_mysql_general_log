@@ -1,0 +1,3 @@
+#!/bin/bash
+
+sed -i -r -e "s/^.*general_log\s+=.*$/general_log = ${MYSQL_GENERAL_LOG}/g" /etc/mysql/mariadb.conf.d/50-server.cnf
