@@ -22,6 +22,7 @@ RUN \
   sed -r -i -e 's/^user\s+=\s+mysql$/#user = mysql/' /etc/mysql/mariadb.conf.d/50-server.cnf && \
   sed -i -r -e 's/^#general_log_file\s+=.*/general_log_file=\/var\/log\/mysql\/mysql.log/g' /etc/mysql/mariadb.conf.d/50-server.cnf && \
   printf '[mysqld]\nskip-name-resolve\n' > /etc/mysql/conf.d/skip-name-resolve.cnf && \
+  chmod 777 /docker-entrypoint-initdb.d && \
   chmod 0777 -R /var/lib/mysql /var/log/mysql && \
   chmod 0775 -R /etc/mysql && \
   chmod 0755 /hooks/entrypoint-pre.d/50_phpmyadmin_setup /hooks/supervisord-pre.d/50_mariadb_setup && \
