@@ -21,7 +21,7 @@ set :backend, :docker
 set :docker_image, @image.id
 #set :docker_debug, true
 set :docker_container_start_timeout, 60
-set :docker_container_ready_regex, /mysqld_safe Starting mysqld daemon with databases from \/var\/lib\/mysql/
+set :docker_container_ready_regex, /mysqld_safe Logging to syslog/
 set :docker_container_create_options, {
   'Image'      => @image.id,
   'User'       => '100000',
