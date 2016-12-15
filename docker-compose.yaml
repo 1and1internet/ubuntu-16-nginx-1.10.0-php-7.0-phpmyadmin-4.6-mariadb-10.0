@@ -11,3 +11,4 @@ services:
       - SUPERVISORD_LOGLEVEL=debug
       - MYSQL_ROOT_PASSWORD=rootroot1!
       - MYSQL_GENERAL_LOG=0
+      - MYSQL_QUERY_CACHE_SIZE=32M
