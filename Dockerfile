@@ -20,7 +20,7 @@ RUN \
   chmod 777 /docker-entrypoint-initdb.d && \
   chmod 0777 -R /var/lib/mysql /var/log/mysql && \
   chmod 0775 -R /etc/mysql && \
-  chmod 0755 /hooks/entrypoint-pre.d/50_phpmyadmin_setup /hooks/supervisord-pre.d/50_mariadb_setup && \
+  chmod 0755 /hooks/entrypoint-pre.d/50_phpmyadmin_setup /hooks/supervisord-pre.d/51_mariadb_setup && \
   chmod 0755 -R /hooks
 
 ENV MYSQL_ROOT_PASSWORD=ReplaceWithENVFromBuild \

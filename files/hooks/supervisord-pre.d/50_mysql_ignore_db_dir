@@ -1,0 +1,3 @@
+#!/bin/bash
+
+sed -i '/skip-external-locking/a ignore-db-dir=lost+found' /etc/mysql/mariadb.conf.d/50-server.cnf
