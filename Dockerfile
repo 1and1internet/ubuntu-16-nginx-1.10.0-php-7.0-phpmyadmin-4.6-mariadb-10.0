@@ -12,10 +12,11 @@ RUN \
   rm -rf /var/lib/apt/lists/* && \
   rm -rf /var/lib/mysql && \
   mkdir --mode=0777 /var/lib/mysql /var/run/mysqld && \
-  sed -r -i -e 's/^bind-address\s+=\s+127\.0\.0\.1$/bind-address = 0.0.0.0/' /etc/mysql/mariadb.conf.d/50-server.cnf && \
-  sed -r -i -e 's/^user\s+=\s+mysql$/#user = mysql/' /etc/mysql/mariadb.conf.d/50-server.cnf && \
-  sed -i -r -e 's/^#general_log_file\s+=.*/general_log_file=\/var\/log\/mysql\/mysql.log/g' /etc/mysql/mariadb.conf.d/50-server.cnf && \
-  sed -i -r -e '/^query_cache/d' /etc/mysql/mariadb.conf.d/50-server.cnf && \
+  chown mysql:mysql /var/lib/mysql && \
+#  sed -r -i -e 's/^bind-address\s+=\s+127\.0\.0\.1$/bind-address = 0.0.0.0/' /etc/mysql/mariadb.conf.d/50-server.cnf && \
+#  sed -r -i -e 's/^user\s+=\s+mysql$/#user = mysql/' /etc/mysql/mariadb.conf.d/50-server.cnf && \
+#  sed -i -r -e 's/^#general_log_file\s+=.*/general_log_file=\/var\/log\/mysql\/mysql.log/g' /etc/mysql/mariadb.conf.d/50-server.cnf && \
+#  sed -i -r -e '/^query_cache/d' /etc/mysql/mariadb.conf.d/50-server.cnf && \
   printf '[mysqld]\nskip-name-resolve\n' > /etc/mysql/conf.d/skip-name-resolve.cnf && \
   chmod 777 /docker-entrypoint-initdb.d && \
   chmod 0777 -R /var/lib/mysql /var/log/mysql && \

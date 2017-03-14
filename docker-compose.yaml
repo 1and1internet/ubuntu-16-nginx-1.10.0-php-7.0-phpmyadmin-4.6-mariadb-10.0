@@ -12,4 +12,4 @@ services:
       - MYSQL_ROOT_PASSWORD=rootroot1!
       - MYSQL_GENERAL_LOG=0
       - MYSQL_QUERY_CACHE_SIZE=32M
-    mem_limit: 256m
+    mem_limit: 2048m
