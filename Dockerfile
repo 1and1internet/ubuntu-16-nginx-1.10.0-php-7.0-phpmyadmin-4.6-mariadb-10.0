@@ -8,7 +8,7 @@ RUN \
   groupadd mysql && \
   useradd -g mysql mysql && \
   apt-get update && \
-  apt-get install -y mariadb-server && \
+  apt-get install -y gettext-base mariadb-server && \
   rm -rf /var/lib/apt/lists/* && \
   rm -rf /var/lib/mysql && \
   mkdir --mode=0777 /var/lib/mysql /var/run/mysqld && \
