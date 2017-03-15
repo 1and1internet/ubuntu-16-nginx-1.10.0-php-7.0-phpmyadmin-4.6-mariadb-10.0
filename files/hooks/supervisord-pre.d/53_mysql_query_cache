@@ -1,9 +1,0 @@
-#!/bin/bash
-
-cat <<EOF > /etc/mysql/mariadb.conf.d/query_cache.cnf
-[mysqld]
-
-query_cache_type = ${MYSQL_QUERY_CACHE_TYPE}
-query_cache_limit = ${MYSQL_QUERY_CACHE_LIMIT}
-query_cache_size = ${MYSQL_QUERY_CACHE_SIZE}
-EOF
