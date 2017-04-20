@@ -25,6 +25,9 @@ set :docker_container_ready_regex, /mysqld_safe Logging to syslog/
 set :docker_container_create_options, {
   'Image'      => @image.id,
   'User'       => '100000',
+  'HostConfig' => {
+     'Memory' => 1073741824
+  }
 }
 
 RSpec.configure do |c|
