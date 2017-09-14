@@ -14,18 +14,16 @@ from distutils.core import setup
 from distutils import util
 
 setup(
-    name='injectable',
+    name='mariadb_config_translator',
     version='0.1',
     url='https://github.com/1and1internet/',
     author='Brian Wilkinson',
     author_email='brian.wilkinson@1and1.co.uk',
     package_dir={
-        'injectable': 'injectable',
-        'injectable.config': util.convert_path('injectable/config'),
+        'mariadb_config_translator': '.',
     },
     packages=[
-        'injectable',
-        'injectable.config',
+        'mariadb_config_translator',
     ],
     install_requires=[
     ],
