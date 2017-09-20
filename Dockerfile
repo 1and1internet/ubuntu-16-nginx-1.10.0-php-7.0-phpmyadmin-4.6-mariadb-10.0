@@ -21,8 +21,10 @@ RUN \
   chmod 777 /docker-entrypoint-initdb.d && \
   chmod 0777 -R /var/lib/mysql /var/log/mysql && \
   chmod 0775 -R /etc/mysql && \
-  chmod 0755 /hooks/entrypoint-pre.d/50_phpmyadmin_setup /hooks/supervisord-pre.d/51_mariadb_setup && \
-  chmod 0755 -R /hooks
+  chmod 0755 -R /hooks && \
+  cd /opt/configurability/src/mariadb_config_translator && \
+  pip --no-cache install --upgrade pip && \
+  pip --no-cache install --upgrade .
 
 ENV MYSQL_ROOT_PASSWORD=ReplaceWithENVFromBuild \
     DISABLE_PHPMYADMIN=0 \
