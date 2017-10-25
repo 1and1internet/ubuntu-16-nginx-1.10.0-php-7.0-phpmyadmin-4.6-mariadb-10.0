@@ -27,7 +27,10 @@ set :docker_container_create_options, {
   'User'       => '100000',
   'HostConfig' => {
      'Memory' => 1073741824
-  }
+  },
+  'Env' => [
+      'MYSQL_ROOT_PASSWORD=In$ecureTe$t1ngPa$$w0rd'
+  ]
 }
 
 RSpec.configure do |c|

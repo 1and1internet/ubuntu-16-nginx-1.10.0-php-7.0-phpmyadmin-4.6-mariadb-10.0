@@ -28,7 +28,15 @@ This image honours the following environment variables.
 
  * ``MYSQL_ROOT_PASSWORD`` - Cause an admin user called 'root' to be created with the specified password.
 
+ * ``MYSQL_RANDOM_ROOT_PASSWORD`` - Cause an admin user called 'root' to be created with a random password. Overrides any password specified in MYSQL_ROOT_PASSWORD.
+
  * ``MYSQL_ALLOW_EMPTY_PASSWORD`` - Cause an admin user called 'root' to be created even if no password is being set.
+
+ * ``MYSQL_ADMIN_USER`` - Creates an admin user named after the value of this variable.
+
+ * ``MYSQL_ADMIN_PASSWORD`` - Specifies the password for the admin user created by specifying MYSQL_ADMIN_USER. Does nothing if MYSQL_ADMIN_USER is not specified.
+
+ * ``MYSQL_RANDOM_ADMIN_PASSWORD`` - Causes a random password to be set for the admin user created by specifying MYSQL_ADMIN_USER. Overrides any password specified in MYSQL_ADMIN_PASSWORD. Does nothing if MYSQL_ADMIN_USER is not specified.
 
  * ``MYSQL_USER`` - Creates a standard (non-admin) user named after the value of this variable. Will be given full access to any database created using MYSQL_DATABASE. Does nothing if MYSQL_PASSWORD is not specified.
 

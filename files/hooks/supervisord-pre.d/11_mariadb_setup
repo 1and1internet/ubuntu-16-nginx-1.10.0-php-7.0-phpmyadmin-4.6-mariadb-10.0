@@ -1,92 +1,293 @@
 #!/bin/bash
-set -e
+set -eo pipefail
 
-mysql_cmd="mysql -u root -p${MYSQL_ROOT_PASSWORD}"
+#
+# This script takes the following optional variables from the environment.
+# Blank variables are considered to be the same as non-specified variables.
+#
+#  MYSQL_ROOT_PASSWORD
+#    Cause an admin user called 'root' to be created with the specified password.
+#
+#  MYSQL_RANDOM_ROOT_PASSWORD
+#    Cause an admin user called 'root' to be created with a random password.
+#    Overrides any password specified in MYSQL_ROOT_PASSWORD.
+#
+#  MYSQL_ALLOW_EMPTY_PASSWORD
+#    Cause an admin user called 'root' to be created even if no password is being set.
+#
+#  MYSQL_ADMIN_USER
+#    Creates an admin user named after the value of this variable.
+#
+#  MYSQL_ADMIN_PASSWORD
+#    Specifies the password for the admin user created by specifying MYSQL_ADMIN_USER.
+#    Does nothing if MYSQL_ADMIN_USER is not specified.
+#
+#  MYSQL_RANDOM_ADMIN_PASSWORD
+#    Causes a random password to be set for the admin user created by specifying MYSQL_ADMIN_USER.
+#    Overrides any password specified in MYSQL_ADMIN_PASSWORD.
+#    Does nothing if MYSQL_ADMIN_USER is not specified.
+#
+#  MYSQL_USER
+#    Creates a standard (non-admin) user named after the value of this variable.
+#    Will be given full access to any database created using MYSQL_DATABASE.
+#    Does nothing if MYSQL_PASSWORD is not specified.
+#
+#  MYSQL_PASSWORD
+#    Specifies the password for the standard user created by specifying MYSQL_USER.
+#    Does nothing if MYSQL_USER is not specified.
+#
+#  MYSQL_DATABASE
+#    Causes a blank database to be created named after the value of this variable.
+#    Any standard user created with MYSQL_USER will be granted full access to this database.
+#
 
-if [ -e "/var/lib/mysql/ib_logfile0" ]; then
-   echo "Mariadb already setup before, skipping."
-   exit 0
-fi
+DIRECTORY="$(mysqld --verbose --help 2>/dev/null | awk '$1 == "datadir" { print $2; exit }')"
 
+if [ ! -d "${DIRECTORY}/mysql" ]; then
+    echo
+    echo "Data directory does not yet exist - performing setup"
+    echo
 
-if [ -z "$MYSQL_ROOT_PASSWORD" -a -z "$MYSQL_ALLOW_EMPTY_PASSWORD" ]; then
-    echo >&2 'error: database is uninitialized and MYSQL_ROOT_PASSWORD not set'
-    echo >&2 '  Did you forget to add -e MYSQL_ROOT_PASSWORD=... ?'
-    exit 1
-fi
+    ###################################################################
+    # Functions
 
-echo 'Running mysql_install_db ...'
-mysql_install_db
-echo 'Finished mysql_install_db'
+    function directory_init {
 
-# These statements _must_ be on individual lines, and _must_ end with
-# semicolons (no line breaks or comments are permitted).
-# TODO proper SQL escaping on ALL the things D:
+        mkdir -p "${DIRECTORY}"
 
-tempSqlFile='/tmp/mysql-first-time.sql'
-cat > "$tempSqlFile" <<-EOSQL
+        touch ${DIRECTORY}/.init_script_is_incomplete
+    }
+
+    function begin_first_time_sql_file {
+
+        local TEMP_FILE=$1
+
+        cat > "${TEMP_FILE}" <<-EOSQL
+        DROP DATABASE IF EXISTS test ;
         DELETE FROM mysql.user ;
-        CREATE USER 'root'@'%' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}' ;
-        GRANT ALL ON *.* TO 'root'@'%' WITH GRANT OPTION ;
+EOSQL
+    }
+
+    function create_admin_user {
+
+        local TEMP_FILE=$1
+        local USERNAME=$2
+        local PASSWORD=$3
+        local RANDOM=$4
+
+        if [ ! -z "${RANDOM}" ]; then
+            PASSWORD="$(pwgen -1 32)"
+            echo "GENERATED RANDOM PASSWORD (only displayed once): ${PASSWORD}"
+        fi
+
+        echo "Creating admin user: ${USERNAME}"
+        cat >> "${TEMP_FILE}" <<-EOSQL
+        CREATE USER '${USERNAME}'@'%' IDENTIFIED BY '${PASSWORD}' ;
+        GRANT ALL ON *.* TO '${USERNAME}'@'%' WITH GRANT OPTION ;
         DROP DATABASE IF EXISTS test ;
 EOSQL
 
-if [ "$MYSQL_DATABASE" ]; then
-    echo "CREATE DATABASE IF NOT EXISTS \`$MYSQL_DATABASE\` ;" >> "$tempSqlFile"
+        USER_HAS_BEEN_CREATED=1
+
+        if [ -z "${CLI_ADMIN_USERNAME}" ]; then
+            CLI_ADMIN_USERNAME=${USERNAME}
+            CLI_ADMIN_PASSWORD=${PASSWORD}
+        fi
+    }
+
+    function create_database {
+
+        local TEMP_FILE=$1
+        local DATABASE=$2
+
+        if [ "${DATABASE}" ]; then
+            echo "Creating database: ${DATABASE}"
+            echo "CREATE DATABASE IF NOT EXISTS \`${DATABASE}\` ;" | "${mysql[@]}"
+        fi
+    }
+
+    function create_standard_user {
+
+        local TEMP_FILE=$1
+        local USERNAME=$2
+        local PASSWORD=$3
+        local DATABASE=$4
+        local RANDOM=$5
+
+        if [ ! -z "${RANDOM}" ]; then
+            PASSWORD="$(pwgen -1 32)"
+            echo "GENERATED RANDOM PASSWORD (only displayed once): ${PASSWORD}"
+        fi
+
+        echo "Creating standard user: ${USERNAME}"
+        echo "CREATE USER '${USERNAME}'@'%' IDENTIFIED BY '${PASSWORD}' ;" >> "${TEMP_FILE}"
+
+        if [ "${DATABASE}" ]; then
+            echo "GRANT ALL ON \`${DATABASE}\`.* TO '${USERNAME}'@'%' ;" >> "${TEMP_FILE}"
+        fi
+
+        USER_HAS_BEEN_CREATED=1
+    }
+
+    function mariadb_init {
+
+        echo 'Initializing database'
+        mysql_install_db >> /dev/null
+        echo 'Database initialized'
+    }
+
+    function mariadb_start {
+
+        local TEMP_FILE=$1
+
+        echo 'FLUSH PRIVILEGES ;' >> "${TEMP_FILE}"
+
+        mysqld --skip-networking --init-file="${TEMP_FILE}" &
+        pid="$!"
+
+        for i in {0..30}; do
+            if echo 'SELECT 1' | "${mysql[@]}" &> /dev/null; then
+                break
+            fi
+            echo "Waiting for MariaDB to be ready (${i}/30) ..."
+            sleep 1
+        done
+        if [ "$i" = 0 ]; then
+            echo >&2 'FAILURE: MariaDB setup process failed while starting mysql instance.'
+            exit 1
+        fi
+    }
+
+    function remove_first_time_sql_file {
+
+        local TEMP_FILE=$1
+
+        rm "${TEMP_FILE}"
+    }
+
+    function initdb_scripts {
+
+        echo
+        for f in /docker-entrypoint-initdb.d/*; do
+            case "$f" in
+                *.sh)     echo "$0: running $f"; . "$f" ;;
+                *.sql)    echo "$0: running $f"; "${mysql[@]}" < "$f"; echo ;;
+                *.sql.gz) echo "$0: running $f"; gunzip -c "$f" | "${mysql[@]}"; echo ;;
+                *)        echo "$0: ignoring $f" ;;
+            esac
+            echo
+        done
+    }
+
+    function stop_mariadb {
+        if ! kill -s TERM "$pid" || ! wait "$pid"; then
+            echo >&2 'FAILURE: MariaDB setup process failed while stopping mysql instance.'
+            exit 1
+        fi
+    }
+
+    ###################################################################
+
+    # Do not use externally provided values for these variables
+    CLI_ADMIN_USERNAME=""
+    CLI_ADMIN_PASSWORD=""
+    USER_HAS_BEEN_CREATED=0
+
+    mysql=( mysql --protocol=socket )
+
+    # Create the directory and the indication that we're mid process
+    #
+    directory_init
+
+    # MariaDB needs to be initialised through a first time sql file
+    #
+    TEMP_FILE=$(mktemp /tmp/mariadb-setup-XXXXXX)
+    begin_first_time_sql_file "${TEMP_FILE}"
+
+    # Setup admin user(s)
+    #
+    if [ -n "${MYSQL_ROOT_PASSWORD}" -o -n "${MYSQL_ALLOW_EMPTY_PASSWORD}" -o -n "${MYSQL_RANDOM_ROOT_PASSWORD}" ]; then
+        # A 'root' user is requested if any of those three variables are specified
+        create_admin_user "${TEMP_FILE}" "root" "${MYSQL_ROOT_PASSWORD}" "${MYSQL_RANDOM_ROOT_PASSWORD}"
+
+        if [ -n "${CLI_ADMIN_USERNAME}" -a -n "${CLI_ADMIN_PASSWORD}" ]; then
+            mysql+=( -u"${CLI_ADMIN_USERNAME}" -p"${CLI_ADMIN_PASSWORD}" )
+            CLI_ADMIN_PASSWORD=""
+        fi
+    fi
+    if [ -n "${MYSQL_ADMIN_USER}" ]; then
+        # An admin user with a name other than root is requested
+        create_admin_user "${TEMP_FILE}" "${MYSQL_ADMIN_USER}" "${MYSQL_ADMIN_PASSWORD}" "${MYSQL_RANDOM_ADMIN_PASSWORD}"
+
+        if [ -n "${CLI_ADMIN_USERNAME}" -a -n "${CLI_ADMIN_PASSWORD}" ]; then
+            mysql+=( -u"${CLI_ADMIN_USERNAME}" -p"${CLI_ADMIN_PASSWORD}" )
+            CLI_ADMIN_PASSWORD=""
+        fi
+    fi
+
+    # Setup blank database
+    #
+    create_database "${TEMP_FILE}" "${MYSQL_DATABASE}"
+    if [ "${MYSQL_DATABASE}" ]; then
+        mysql+=( "${MYSQL_DATABASE}" )
+    fi
+
+    # Setup non-admin user
+    #
+    if [ -n "${MYSQL_USER}" -a -n "${MYSQL_PASSWORD}" ]; then
+        create_standard_user "${TEMP_FILE}" "${MYSQL_USER}" "${MYSQL_PASSWORD}" "${MYSQL_DATABASE}"
+    fi
+
+    # Warn if no user created
+    #
+    if [ "${USER_HAS_BEEN_CREATED}" -le "0" ]; then
+        echo >&2 "WARNING: No sql users requested - creating root user by default"
+        create_admin_user "${TEMP_FILE}" "root" "" "True"
+        if [ -n "${CLI_ADMIN_USERNAME}" -a -n "${CLI_ADMIN_PASSWORD}" ]; then
+            mysql+=( -u"${CLI_ADMIN_USERNAME}" -p"${CLI_ADMIN_PASSWORD}" )
+            CLI_ADMIN_PASSWORD=""
+        fi
+    fi
+
+    # Mysql first run (creates the data directory, starts temporary instance, etc.)
+    #
+    mariadb_init
+    mariadb_start "${TEMP_FILE}"
+    remove_first_time_sql_file "${TEMP_FILE}"
+    echo
+
+    # Load seed data from scripts
+    #
+    initdb_scripts
+
+    # Need to stop the temporary instance before we can start for real
+    #
+    stop_mariadb
+
+    # Remove the indication that we're mid process
+    #
+    if [ -e ${DIRECTORY}/.init_script_is_incomplete ]; then
+        rm ${DIRECTORY}/.init_script_is_incomplete
+    fi
+
+    # Inform the log that we're done
+    #
+    echo
+    echo 'MariaDB init process done. Ready for start up.'
+    echo
 fi
 
-if [ "$MYSQL_USER" -a "$MYSQL_PASSWORD" ]; then
-    echo "CREATE USER '$MYSQL_USER'@'%' IDENTIFIED BY '$MYSQL_PASSWORD' ;" >> "$tempSqlFile"
-
-    if [ "$MYSQL_DATABASE" ]; then
-        echo "GRANT ALL ON \`$MYSQL_DATABASE\`.* TO '$MYSQL_USER'@'%' ;" >> "$tempSqlFile"
-    fi
-fi
-
-echo 'FLUSH PRIVILEGES ;' >> "$tempSqlFile"
-
-mysqld --skip-networking --init-file=$tempSqlFile &
-pid="$!"
-
-for i in {30..0}; do
-    if echo 'SELECT 1' | $mysql_cmd &> /dev/null; then
-        break
-    fi
-    echo 'MySQL init process in progress...'
-    sleep 1
-done
-if [ "$i" = 0 ]; then
-    echo >&2 'MySQL init process failed.'
+if [ -e ${DIRECTORY}/.init_script_is_incomplete ]; then
+    echo >&2 'FAILURE: MariaDB setup process is incomplete.'
     exit 1
 fi
 
-echo
-for f in /docker-entrypoint-initdb.d/*; do
-    case "$f" in
-        *.sh)
-          echo "$0: running $f"
-          . "$f"
-          [ "$?" != "0" ] && echo "$f failed. Exiting" && exit 1
-        ;;
-        *.sql)
-          echo "$0: running $f";
-          $mysql_cmd < "$f"
-          [ "$?" != "0" ] && echo "$f failed. Exiting" && exit 1
-          echo
-        ;;
-        *.sql.gz)
-          echo "$0: running $f"
-          gunzip -c "$f" | $mysql_cmd
-          [ "$?" != "0" ] && echo "$f failed. Exiting" && exit 1
-          echo
-        ;;
-        *)
-          echo "$0: ignoring $f"
-        ;;
-    esac
-done
+cat <<EOM
 
-if ! kill -s TERM "$pid" || ! wait "$pid"; then
-    echo >&2 'Failed to stop initial MySQL setup process.'
-    exit 1
-fi
+The latest information about MariaDB is available at http://mariadb.org/.
+
+Consider joining MariaDB's strong and vibrant community:
+https://mariadb.org/get-involved/
+
+
+EOM
