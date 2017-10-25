@@ -1,5 +1,5 @@
 FROM 1and1internet/ubuntu-16-nginx-php-phpmyadmin:latest
-MAINTAINER James Eckersall <james.eckersall@1and1.co.uk>
+MAINTAINER Brian Wojtczak <brian.wojtczak@1and1.co.uk>
 ARG DEBIAN_FRONTEND=noninteractive
 
 COPY files/ /
