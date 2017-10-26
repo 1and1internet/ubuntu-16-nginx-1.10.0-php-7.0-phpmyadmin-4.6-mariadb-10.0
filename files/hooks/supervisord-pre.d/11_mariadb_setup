@@ -102,7 +102,7 @@ EOSQL
 
         if [ "${DATABASE}" ]; then
             echo "Creating database: ${DATABASE}"
-            echo "CREATE DATABASE IF NOT EXISTS \`${DATABASE}\` ;" | "${mysql[@]}"
+            echo "CREATE DATABASE IF NOT EXISTS \`${DATABASE}\` ;" >> "${TEMP_FILE}"
         fi
     }
 
