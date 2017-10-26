@@ -1,1 +1,0 @@
-Modify pre hook to use a my.cnf instead of password on mysql commandline
