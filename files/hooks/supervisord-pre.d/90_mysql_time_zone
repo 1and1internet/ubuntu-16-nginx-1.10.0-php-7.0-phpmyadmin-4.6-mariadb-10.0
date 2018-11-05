@@ -1,10 +1,39 @@
 #!/bin/bash
 set -eo pipefail
 
+function start_server {
+    echo "Starting DB Server"
+    mysqld --skip-networking &
+    PID=$!
+    sleep 1
+}
+
+function stop_server {
+    echo "Stopping DB Server $PID"
+    kill -s TERM $PID
+    wait $PID
+}
+
+function tz_names_populated {
+    start_server
+    TZ_NAME_COUNT=$(mysql -u $MYSQL_ADMIN_USER \
+                    --password=$MYSQL_ADMIN_PASSWORD \
+                    -e "SELECT * FROM time_zone_name where Name = '$TZ'" mysql | wc -l)
+    stop_server
+    if [ $TZ_NAME_COUNT -gt 0 ]; then
+        return 0
+    fi
+    return 1
+}
+
 function set_time_zone {
     [ $SET_TIME_ZONE == 'true' ] && TZ=$(tzupdate -p) || TZ=${SET_TIME_ZONE}
-    echo "Setting timezone to $TZ"
-    sed -i "s|default_time_zone.*|default_time_zone = $TZ|" /etc/mysql/mariadb.conf.d/50-server.cnf
+    if tz_names_populated; then
+        echo "Setting timezone to '$TZ'"
+        sed -i "s|default_time_zone.*|default_time_zone = $TZ|" /etc/mysql/mariadb.conf.d/50-server.cnf
+    else
+        echo "Time-zone '$TZ' missing from database"
+    fi
 }
 
 if [ ! -z $SET_TIME_ZONE ] && [ "$SET_TIME_ZONE" != "false" ]; then
