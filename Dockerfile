@@ -20,7 +20,8 @@ RUN \
   chmod 0755 -R /hooks && \
   cd /opt/configurability/src/mariadb_config_translator && \
   pip --no-cache install --upgrade pip && \
-  pip --no-cache install --upgrade .
+  pip --no-cache install --upgrade . && \
+  pip install tzupdate
 
 ENV DISABLE_PHPMYADMIN=0 \
     PMA_ARBITRARY=0 \

@@ -1,0 +1,12 @@
+#!/bin/bash
+set -eo pipefail
+
+function set_time_zone {
+    [ $SET_TIME_ZONE == 'true' ] && TZ=$(tzupdate -p) || TZ=${SET_TIME_ZONE}
+    echo "Setting timezone to $TZ"
+    sed -i "s|default_time_zone.*|default_time_zone = $TZ|" /etc/mysql/mariadb.conf.d/50-server.cnf
+}
+
+if [ ! -z $SET_TIME_ZONE ] && [ "$SET_TIME_ZONE" != "false" ]; then
+    set_time_zone
+fi
