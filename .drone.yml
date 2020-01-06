@@ -81,7 +81,7 @@ pipeline:
       - /shared_storage:/shared_storage
       - /secrets:/secrets
     commands:
-      - images_tool -s /secrets/ -w /shared_storage --image-name build-${CI_BUILD_NUMBER}-${CI_REPO#*/}/${CI_REPO#*/} --publish-image-unstable
+      - images_tool -s /secrets/ -w /shared_storage --image-name build-${CI_BUILD_NUMBER}-${CI_REPO#*/}/${CI_REPO#*/} --publish-image-unstable --skip-compare
 
   clean_workspace:
     when:
