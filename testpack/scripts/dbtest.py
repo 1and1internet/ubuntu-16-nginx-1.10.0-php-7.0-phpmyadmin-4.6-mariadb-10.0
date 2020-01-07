@@ -6,10 +6,24 @@ import time
 
 
 class Test1and1Image(Test1and1Common):
+    dbname = 'unittestdb'
+    dbuser = 'user123'
+    dbpasswd = 'user123passw'
+
+    @classmethod
+    def setUpClass(cls):
+        environment = {
+            'MYSQL_DATABASE': Test1and1Image.dbname,
+            'MYSQL_ADMIN_USER': Test1and1Image.dbuser,
+            'MYSQL_ADMIN_PASSWORD': Test1and1Image.dbpasswd
+        }
+        Test1and1Common.setUpClass(environment=environment)
+        print("Waiting for database to be configured before starting tests...")
+        time.sleep(10)
+
     # <tests to run>
 
     def test_docker_logs(self):
-        time.sleep(10)
         expected_log_lines = [
             "Executing hook /hooks/supervisord-pre.d/21_cleanup_log_files",
             "Executing hook /hooks/supervisord-pre.d/40_phpmyadmin_config_secret",
@@ -24,12 +38,19 @@ class Test1and1Image(Test1and1Common):
             )
 
     def test_mysql_running(self):
-        time.sleep(10)
         self.assertTrue(
             self.exec("ps -ef").find('mysqld_safe') > -1,
             msg="mysqld_safe not running"
         )
 
+    def test_login(self):
+        driver = self.getChromeDriver()
+        driver.get(Test1and1Image.endpoint)
+        self.assertEqual('phpMyAdmin', driver.title)
+        driver.find_element_by_id("input_username").send_keys(Test1and1Image.dbuser)
+        driver.find_element_by_id("input_password").send_keys(Test1and1Image.dbpasswd)
+        driver.find_element_by_id("input_go").click()
+        self.assertIsNotNone(driver.find_element_by_id("pma_navigation_tree_content"))
 
     # </tests to run>
 
